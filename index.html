@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Consulta territorial de indicadores de salud escolar en la Ciudad de México.">
+  <title>Visor de Salud Escolar de la Ciudad de México</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="style.css?v=20261007-salud-1">
+</head>
+<body>
+<header class="topbar"><div class="brand-block"><span class="eyebrow">Sistema de información geográfica</span><h1>Visor de Salud Escolar de la Ciudad de México</h1><p>Consulta territorial de caries, nutrición, valoración visual y concurrencia de condiciones por CCT, turno y ciclo escolar.</p></div><nav><a id="statsLink" href="estadisticas.html">Estadísticas generales</a></nav></header>
+<main class="layout" id="layout">
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-head"><div><span class="panel-kicker">Herramientas</span><strong>Panel de consulta</strong></div><button id="toggleSidebar" class="icon-button" type="button" title="Ocultar menú">‹</button></div>
+  <section class="panel health-panel"><h2>Indicador de salud</h2>
+    <label for="filtroCiclo">Ciclo escolar</label><select id="filtroCiclo"></select>
+    <label for="filtroIndicador">Indicador</label><select id="filtroIndicador"></select>
+    <label for="filtroEstado">Estado del registro</label><select id="filtroEstado"><option value="">Todos</option><option value="con">Con evaluación válida</option><option value="cero">Con evaluación y 0 casos</option><option value="sin">Sin registro válido</option></select>
+    <label>Rango del indicador</label><div id="rangeFilters" class="range-list"></div>
+    <p class="health-note"><strong>Sin registro válido</strong> no es lo mismo que 0. Un 0 significa que sí hubo estudiantes válidamente evaluados y no se registraron casos.</p>
+  </section>
+  <section class="panel"><h2>Filtros generales</h2>
+    <div class="filter-inline"><div><label for="filtroAlcaldia">Alcaldía</label><select id="filtroAlcaldia"><option value="">Todas</option></select></div><div><label for="filtroNivel">Nivel educativo</label><select id="filtroNivel"><option value="">Todos</option></select></div></div>
+    <label for="filtroTurno">Turno</label><select id="filtroTurno"><option value="">Todos</option></select>
+    <label for="buscarCCT">Buscar por CCT</label><input id="buscarCCT" list="listaCCT" type="search" placeholder="Escribe o selecciona un CCT"><datalist id="listaCCT"></datalist>
+    <label for="buscarNombre">Buscar por nombre</label><input id="buscarNombre" list="listaNombres" type="search" placeholder="Nombre del plantel"><datalist id="listaNombres"></datalist>
+    <label class="inline-check"><input id="ocultarPocos" type="checkbox"><span>Ocultar registros con muestra reducida</span></label>
+    <div class="buttons single-action"><button id="btnLimpiar" class="secondary" type="button">Limpiar todos los filtros</button></div>
+  </section>
+  <section class="panel collapsible-panel"><button id="toggleConcurrencia" class="collapse-title" type="button" aria-expanded="false"><span>Concurrencia de condiciones</span><span id="concurrenciaArrow">›</span></button><div id="concurrenciaBody" class="collapsible-body hidden">
+    <p class="hint">Visualiza combinaciones registradas en estudiantes con evaluación completa. Al activar una combinación, el mapa cambia temporalmente a ese indicador.</p>
+    <label class="inline-check"><input id="usarCombinacion" type="checkbox"><span>Usar combinación como indicador</span></label>
+    <label for="filtroCombinacion">Combinación</label><select id="filtroCombinacion" disabled><option value="">Selecciona una combinación</option></select>
+  </div></section>
+  <section class="panel"><h2>Clusters</h2><div class="cluster-options"><label class="inline-check"><input id="toggleClusters" type="checkbox" checked><span>Agrupar planteles cercanos</span></label><label class="inline-check"><input id="toggleClusterHealth" type="checkbox" checked><span>Colorear clusters por prevalencia agregada</span></label></div><p class="hint">Cada cluster resume los puntos cercanos. El color usa casos / evaluados del indicador seleccionado; al acercarte, el cluster se desagrupa.</p></section>
+  <section class="panel compact"><h2>Resumen visible</h2><div id="summaryText" class="health-summary-line">Cargando información…</div><div class="kpis dynamic-kpis"><div><strong id="kpi1">0</strong><span>CCT visibles</span></div><div><strong id="kpi2">0</strong><span>Inmuebles oficiales</span></div><div><strong id="kpi3">0</strong><span>CCT con evaluación</span></div><div><strong id="kpi4">0</strong><span>Casos del indicador</span></div></div></section>
+</aside>
+<button id="showSidebar" class="show-sidebar hidden" type="button">Menú</button>
+<section class="maparea" id="maparea"><div id="map"></div><div class="map-actions"><button id="toggleDark" type="button" title="Modo oscuro">◐</button><button id="toggleFullscreen" type="button" title="Pantalla completa">⛶</button></div><div id="mapStatus" class="map-status">Cargando información del visor…</div><div id="legend" class="legend"><div class="legend-head"><strong id="legendTitle">Indicador</strong><button id="toggleLegend" type="button">−</button></div><div id="legendBody"></div></div><aside id="detailPanel" class="detail-panel" aria-live="polite" aria-hidden="true"><button id="closeDetail" class="close" type="button">×</button><h2 id="detailTitle">Seleccione un plantel</h2><div id="detailContent" class="detail-content"><p>Haga clic en un punto del mapa para consultar la información.</p></div></aside></section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script><script src="script.js?v=20261007-salud-1"></script>
+</body></html>
