@@ -126,37 +126,6 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .collapse-title:hover { color: var(--primary); background: var(--bg); }
 .collapsible-body { padding-top: 12px; }
 
-.section-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 9px 0; }
-.compact-action { padding: 8px; font-size: 12px; }
-.selection-counter { margin: 7px 0; padding: 8px 9px; color: var(--muted); background: var(--panel-soft); border: 1px solid var(--border); border-radius: 7px; font-size: 12px; }
-.selection-counter strong { color: var(--primary); font-size: 15px; }
-
-.program-checklist { max-height: 440px; overflow: auto; background: var(--panel-soft); border: 1px solid var(--border); border-radius: 9px; }
-.program-group, .territory-group { border-bottom: 1px solid var(--border); }
-.program-group:last-child, .territory-group:last-child { border-bottom: 0; }
-.program-group summary, .territory-group summary { display: flex; justify-content: space-between; gap: 8px; padding: 10px; color: var(--primary); background: var(--panel-soft); cursor: pointer; font-size: 13px; font-weight: 800; }
-.program-group summary small, .territory-group summary small { flex: 0 0 auto; color: var(--muted); font-size: 12px; font-weight: 600; }
-.program-group > div { padding: 4px 7px; }
-.program-option { margin: 0; padding: 7px 5px; border-bottom: 1px solid var(--border); font-weight: 550; }
-.program-option:last-child { border-bottom: 0; }
-.theme-checklist { display: grid; gap: 3px; }
-.theme-checklist .inline-check { margin: 0; padding: 7px; border-radius: 7px; }
-.theme-checklist .inline-check:hover, .territory-option:hover { background: var(--panel-soft); }
-
-#territoryFilters { overflow: hidden; border: 1px solid var(--border); border-radius: 9px; }
-.territory-group-body { padding: 9px; }
-.territory-search { min-height: 36px; }
-.territory-clear { width: 100%; margin: 7px 0; padding: 7px 9px; font-size: 12px; }
-.territory-checklist { max-height: 285px; overflow: auto; border-top: 1px solid var(--border); }
-.territory-option { margin: 0; padding: 7px 4px; border-bottom: 1px solid var(--border); font-weight: 550; }
-.territory-option:last-child { border-bottom: 0; }
-.territory-single-group { padding: 10px; border-top: 1px solid var(--border); }
-.territory-single-group:first-child { border-top: 0; }
-.territory-single-group label { margin: 0 0 6px; }
-.territory-single { width: 100%; }
-.territory-layer-group { padding: 8px 10px; border-top: 1px solid var(--border); }
-.territory-layer-option { margin: 0; padding: 4px 0; }
-.hidden-by-search { display: none !important; }
 
 .cross-summary { margin: 0 0 10px; padding: 9px; color: var(--text); background: var(--panel-soft); border-left: 3px solid var(--primary); border-radius: 6px; font-size: 13px; line-height: 1.4; }
 .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -265,15 +234,6 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .indicator-grid span { display: block; color: var(--muted); font-size: 12px; line-height: 1.3; }
 .indicator-grid strong { display: block; margin-top: 4px; color: var(--primary); font-size: 14px; }
 
-.socio-content { padding-top: 8px; border-top: 1px solid var(--border); }
-.socio-content h3 { margin: 0 0 5px; color: var(--primary); font-size: 15px; }
-.socio-content p { margin: 0 0 9px; color: var(--muted); font-size: 12px; line-height: 1.45; }
-.socio-highlight { margin: 10px 0; padding: 10px; background: var(--panel-soft); border: 1px solid var(--border); border-radius: 8px; }
-.socio-highlight span, .socio-grid span { display: block; color: var(--muted); font-size: 12px; line-height: 1.35; }
-.socio-highlight strong { display: block; margin-top: 4px; color: var(--primary); font-size: 17px; }
-.socio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 10px; }
-.socio-grid > div { padding: 8px; background: var(--panel-soft); border: 1px solid var(--border); border-radius: 8px; }
-.socio-grid strong { display: block; margin-top: 4px; color: var(--text); font-size: 13px; }
 
 .stats-page { min-height: 100vh; padding: 18px; }
 .stats-container { max-width: 1240px; margin: 0 auto; }
@@ -338,3 +298,16 @@ th { color: var(--text); background: var(--panel-soft); font-size: 13px; }
 .legend-row{display:flex;align-items:center;gap:7px;margin:5px 0}.legend-swatch{width:13px;height:13px;border-radius:50%;border:1px solid rgba(15,23,42,.18);flex:0 0 auto}.legend-note{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);color:var(--muted);font-size:11px;line-height:1.35}
 .sidebar .filter-inline{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cluster-options{display:grid;gap:7px}.cluster-options .inline-check{margin:0}.source-chip{display:inline-block;padding:3px 6px;border-radius:6px;background:#e0f2fe;color:#075985;font-size:10px;font-weight:800}.dark-mode .source-chip{background:#12354b;color:#9bd5f5}
 @media(max-width:780px){.sidebar .filter-inline{grid-template-columns:1fr}.health-cluster-bubble{font-size:11px}}
+
+/* Salud escolar · refinamiento profesional 2026-10-08 */
+.layout{grid-template-columns:342px 1fr}.topbar{min-height:88px;padding:13px 22px}.layout{height:calc(100vh - 88px)}
+.panel{margin:9px;padding:13px;border-radius:10px}.panel h2{font-size:15px;margin-bottom:10px}.sidebar-head{min-height:58px}
+.health-panel .range-list{display:grid;gap:4px;margin-top:7px}.health-panel .range-option{display:flex;align-items:center;gap:8px;margin:0;padding:6px 7px;border:1px solid var(--border);border-radius:7px;background:var(--panel-soft);font-size:12px;font-weight:600;line-height:1.2;cursor:pointer}.health-panel .range-option:hover{background:var(--bg)}.health-panel .range-option input{width:14px;height:14px;min-height:0;margin:0;accent-color:var(--primary);flex:0 0 14px}.health-panel .range-option .legend-swatch{width:10px;height:10px;border-radius:3px;flex:0 0 10px}.health-note{font-size:11.5px;padding:8px 9px}
+.school-dot{width:17px;height:17px;border:2.5px solid #fff;box-shadow:0 1px 6px rgba(15,23,42,.42)}
+.health-cluster-bubble{position:relative;display:flex;align-items:center;justify-content:center;flex-direction:column;border-radius:50%;background:var(--cluster)!important;border:3px solid rgba(255,255,255,.96);box-shadow:0 4px 14px rgba(15,23,42,.28),0 0 0 1px rgba(15,23,42,.12);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.28)}.health-cluster-bubble span{font-weight:850;font-size:13px;line-height:1}.health-cluster-bubble small{display:none}.cluster-tip p{margin:5px 0 2px;color:var(--muted);font-size:11px;line-height:1.35}
+.legend{max-width:260px}.legend-row{margin:4px 0}.legend-swatch{width:11px;height:11px}.legend-note{font-size:10.5px}.legend-note strong{color:var(--text)}
+.sample-warning{margin:0 0 9px;padding:8px 9px;border:1px solid #f4d38b;border-left:3px solid #d99a1d;border-radius:7px;background:#fff8e8;color:#7a5310;font-size:11px;line-height:1.4}.dark-mode .sample-warning{background:#362d17;color:#f2d58c;border-color:#65522a}.mini-method{margin:0 0 8px;color:var(--muted);font-size:11px;line-height:1.4}.combo-map-btn{width:100%;margin-top:8px}.cluster-options{gap:4px}
+.detail-panel{width:min(430px,calc(100vw - 28px));max-height:calc(100% - 28px)}.metric-table{font-size:11.5px}.metric-table th,.metric-table td{padding:6px 5px}
+.stats-filter-panel{padding:13px}.cards{grid-template-columns:repeat(4,minmax(0,1fr))}.card strong{font-size:26px}.health-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}.health-stat-card{padding:14px;background:var(--panel);border:1px solid var(--border);border-radius:11px;box-shadow:0 2px 8px rgba(15,53,84,.05)}.health-stat-card span{display:block;color:var(--muted);font-size:12px}.health-stat-card strong{display:block;margin-top:5px;color:var(--primary);font-size:22px}.health-stat-card small{display:block;margin-top:3px;color:var(--muted);font-size:11px}
+@media(max-width:960px){.layout{height:auto}.topbar{min-height:auto}.health-stats-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.health-stats-grid{grid-template-columns:1fr}.maparea{height:68vh;min-height:500px}.panel{margin:7px}.detail-panel{max-height:58%}}
