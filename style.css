@@ -311,3 +311,14 @@ th { color: var(--text); background: var(--panel-soft); font-size: 13px; }
 .stats-filter-panel{padding:13px}.cards{grid-template-columns:repeat(4,minmax(0,1fr))}.card strong{font-size:26px}.health-stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}.health-stat-card{padding:14px;background:var(--panel);border:1px solid var(--border);border-radius:11px;box-shadow:0 2px 8px rgba(15,53,84,.05)}.health-stat-card span{display:block;color:var(--muted);font-size:12px}.health-stat-card strong{display:block;margin-top:5px;color:var(--primary);font-size:22px}.health-stat-card small{display:block;margin-top:3px;color:var(--muted);font-size:11px}
 @media(max-width:960px){.layout{height:auto}.topbar{min-height:auto}.health-stats-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.health-stats-grid{grid-template-columns:1fr}.maparea{height:68vh;min-height:500px}.panel{margin:7px}.detail-panel{max-height:58%}}
+
+/* Clusters por terciles - actualización 2026-10-13 */
+.tercile-box{margin-top:9px;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--panel-soft)}
+.tercile-title{font-size:11px;font-weight:800;color:var(--text);margin-bottom:6px}
+.tercile-row{display:grid;grid-template-columns:10px 46px 1fr;align-items:center;gap:6px;margin:4px 0;font-size:11px}.tercile-row>span{width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 1px rgba(15,23,42,.12)}.tercile-row b{font-size:11px}.tercile-row small{color:var(--muted);font-size:10.5px;text-align:right}
+.tercile-note{margin:7px 0 0;padding-top:7px;border-top:1px solid var(--border);font-size:10.5px;line-height:1.35;color:var(--muted)}
+.legend-subtitle{margin:7px 0 3px;padding-top:6px;border-top:1px solid var(--border);font-size:10px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.035em}.legend-subtitle:first-child{margin-top:0;padding-top:0;border-top:0}
+.health-cluster-bubble.tier-t1,.health-cluster-bubble.tier-zero{box-shadow:0 4px 14px rgba(15,23,42,.25),0 0 0 1px rgba(21,128,61,.28)}
+.health-cluster-bubble.tier-t2{box-shadow:0 4px 14px rgba(15,23,42,.25),0 0 0 1px rgba(245,158,11,.34)}
+.health-cluster-bubble.tier-t3{box-shadow:0 4px 14px rgba(15,23,42,.28),0 0 0 1px rgba(198,40,40,.36)}
+@media(max-width:780px){.tercile-row{grid-template-columns:10px 44px 1fr}.tercile-box{padding:8px}}

@@ -26,6 +26,12 @@ const RANGE_DEFS = [
   {key:'r5', label:'> 40 %', color:'#8e244d'}
 ];
 
+// Los puntos individuales mantienen rangos fijos. Los clusters usan terciles
+// calculados para toda la CDMX por ciclo + indicador, de modo que sus colores
+// no cambian al aplicar filtros de alcaldía, nivel, turno o búsqueda.
+const CLUSTER_TERCILE_COLORS = {sin:'#94a3b8', zero:'#15803d', t1:'#2e7d32', t2:'#f59e0b', t3:'#c62828'};
+let tercileCache = new Map();
+
 const CANONICAL_ALCALDIAS = [
   'ÁLVARO OBREGÓN','AZCAPOTZALCO','BENITO JUÁREZ','COYOACÁN','CUAJIMALPA DE MORELOS','CUAUHTÉMOC',
   'GUSTAVO A. MADERO','IZTACALCO','IZTAPALAPA','LA MAGDALENA CONTRERAS','MIGUEL HIDALGO','MILPA ALTA',
@@ -129,6 +135,54 @@ function selectedRanges(){ return new Set([...q('rangeFilters').querySelectorAll
 function rangeKey(m){ if(!m.hasRecord) return 'sin'; if((m.cases||0)===0) return 'zero'; const p=m.pct||0; if(p<=5) return 'r1'; if(p<=10) return 'r2'; if(p<=20) return 'r3'; if(p<=40) return 'r4'; return 'r5'; }
 function rangeColor(key){return RANGE_DEFS.find(x=>x.key===key)?.color||'#64748b'}
 
+function quantile(sorted,p){
+  if(!sorted.length) return null;
+  if(sorted.length===1) return sorted[0];
+  const pos=(sorted.length-1)*p, lo=Math.floor(pos), hi=Math.ceil(pos), w=pos-lo;
+  return sorted[lo]*(1-w)+sorted[hi]*w;
+}
+function clusterTercileKey(){
+  const cycle=q('filtroCiclo').value;
+  return `${cycle}|${activeCombo?`combo:${activeCombo}`:`metric:${q('filtroIndicador').value}`}`;
+}
+function getClusterTerciles(){
+  const cacheKey=clusterTercileKey();
+  if(tercileCache.has(cacheKey)) return tercileCache.get(cacheKey);
+  const cycle=q('filtroCiclo').value, values=[];
+  // Importante: NO se aplican los filtros visibles. Cada CCT de la CDMX cuenta
+  // una vez y se agregan sus turnos del ciclo. Sin registro y 0 % se excluyen
+  // de los cortes para que no deformen la distribución positiva.
+  Object.keys(base).forEach(cct=>{
+    if(EXCLUDED_CCTS.has(cct)) return;
+    const m=metricForCct(cct,cycle,'');
+    if(m.hasRecord && m.cases>0 && Number.isFinite(m.pct)) values.push(m.pct);
+  });
+  values.sort((a,b)=>a-b);
+  const out={q1:quantile(values,1/3),q2:quantile(values,2/3),n:values.length};
+  tercileCache.set(cacheKey,out); return out;
+}
+function clusterTercileClass(m){
+  if(!m.hasRecord) return 'sin';
+  if((m.cases||0)===0) return 'zero';
+  const t=getClusterTerciles();
+  if(t.q1==null||t.q2==null) return 't2';
+  if(m.pct<=t.q1) return 't1';
+  if(m.pct<=t.q2) return 't2';
+  return 't3';
+}
+function clusterTercileLabel(k){return k==='sin'?'Sin registro válido':k==='zero'?'Evaluado, 0 casos':k==='t1'?'Tercil bajo':k==='t2'?'Tercil medio':'Tercil alto'}
+function clusterTercileColor(k){return CLUSTER_TERCILE_COLORS[k]||'#64748b'}
+function clusterTercileText(){
+  const t=getClusterTerciles();
+  if(t.q1==null||t.q2==null) return '<p class="tercile-note">No hay suficientes registros positivos para calcular terciles.</p>';
+  return `<div class="tercile-title">Terciles de prevalencia · CDMX</div>
+    <div class="tercile-row"><span style="background:${CLUSTER_TERCILE_COLORS.t1}"></span><b>Bajo</b><small>≤ ${fmt(t.q1,1)} %</small></div>
+    <div class="tercile-row"><span style="background:${CLUSTER_TERCILE_COLORS.t2}"></span><b>Medio</b><small>&gt; ${fmt(t.q1,1)} a ${fmt(t.q2,1)} %</small></div>
+    <div class="tercile-row"><span style="background:${CLUSTER_TERCILE_COLORS.t3}"></span><b>Alto</b><small>&gt; ${fmt(t.q2,1)} %</small></div>
+    <p class="tercile-note">Cortes fijos para toda la CDMX en el ciclo e indicador seleccionados. Los filtros no cambian los cortes. 0 % y sin registro no participan en el cálculo.</p>`;
+}
+function updateClusterTercileInfo(){const el=q('clusterTercileInfo');if(el)el.innerHTML=clusterTercileText();}
+
 function rowsForCct(cct,cycle,turn){ return (healthIndex.get(cct)||[]).filter(r=>r.ciclo===cycle && (!turn || turnCanonical(r.turno)===turn)); }
 function metricForCct(cct,cycle,turn){
   if(activeCombo) return comboMetricForCct(cct,cycle,turn,activeCombo);
@@ -196,16 +250,15 @@ function createSiteMarker(site){
 }
 function createClusterIcon(cluster){
   const a=clusterAggregate(cluster),count=cluster.getChildCount();
-  const key=rangeKey(a), color=rangeColor(key), size=count<10?36:count<50?44:52;
-  const sev=key==='sin'?'Sin registro':key==='zero'?'Sin casos':key==='r1'?'Muy bajo':key==='r2'?'Bajo':key==='r3'?'Medio':key==='r4'?'Alto':'Muy alto';
-  return L.divIcon({className:'health-cluster',html:`<div class="health-cluster-bubble" style="--cluster:${color};width:${size}px;height:${size}px"><span>${count}</span><small>${sev}</small></div>`,iconSize:[size,size],iconAnchor:[size/2,size/2]});
+  const tier=clusterTercileClass(a), color=clusterTercileColor(tier), size=count<10?36:count<50?44:52;
+  return L.divIcon({className:'health-cluster',html:`<div class="health-cluster-bubble tier-${tier}" style="--cluster:${color};width:${size}px;height:${size}px" aria-label="${clusterTercileLabel(tier)}"><span>${count}</span></div>`,iconSize:[size,size],iconAnchor:[size/2,size/2]});
 }
 function clusterAggregate(cluster){
   const markers=cluster.getAllChildMarkers(); let valid=0,cases=0,recordSites=0,official=0,ccts=0;
   markers.forEach(m=>{const s=m._healthSite;if(!s)return;ccts+=s.visibleCcts.length;if(s.official)official++;if(s.agg.hasRecord){recordSites++;valid+=s.agg.valid;cases+=s.agg.cases;}});
   return {hasRecord:valid>0,valid,cases,pct:valid?100*cases/valid:null,recordSites,sites:markers.length,official,ccts};
 }
-function clusterTooltip(a){ const k=rangeKey(a); const status=k==='sin'?'Sin registro válido':k==='zero'?'Evaluado, sin casos':fmt(a.pct,1)+' %'; return `<div class="cluster-tip"><strong>Resumen del cluster</strong><p>El color representa la prevalencia agregada del indicador.</p><dl><dt>Ubicaciones</dt><dd>${fmt(a.sites)}</dd><dt>CCT</dt><dd>${fmt(a.ccts)}</dd><dt>Con evaluación</dt><dd>${fmt(a.recordSites)}</dd><dt>Evaluados</dt><dd>${fmt(a.valid)}</dd><dt>Casos</dt><dd>${fmt(a.cases)}</dd><dt>Resultado</dt><dd>${status}</dd></dl></div>`; }
+function clusterTooltip(a){ const tier=clusterTercileClass(a); const status=!a.hasRecord?'Sin registro válido':a.cases===0?'0 % · evaluado sin casos':`${fmt(a.pct,1)} % · ${clusterTercileLabel(tier)}`; return `<div class="cluster-tip"><strong>Resumen del cluster</strong><p>Color por terciles de prevalencia de toda la CDMX. El porcentaje del cluster se calcula con casos / evaluados.</p><dl><dt>Ubicaciones</dt><dd>${fmt(a.sites)}</dd><dt>CCT</dt><dd>${fmt(a.ccts)}</dd><dt>Con evaluación</dt><dd>${fmt(a.recordSites)}</dd><dt>Evaluados</dt><dd>${fmt(a.valid)}</dd><dt>Casos</dt><dd>${fmt(a.cases)}</dd><dt>Resultado</dt><dd>${status}</dd></dl></div>`; }
 
 function popupMetricHtml(cct){
   const m=metricForCct(cct,q('filtroCiclo').value,q('filtroTurno').value);
@@ -243,7 +296,7 @@ function healthOverview(cct,cycle,turn){
   const keys=['caries','bajo_peso','sobrepeso','obesidad','alteracion_nutricional','visual','concurrencia'];
   const rr=rowsForCct(cct,cycle,turn); let anySmall=false;
   const rows=keys.map(k=>{const d=METRICS[k];let valid=0,cases=0,small=false;rr.forEach(r=>{const v=Number(r[d.valid]);if(v>0){valid+=v;cases+=Number(r[d.cases])||0;}if(Number(r[d.small])===1)small=true;});anySmall=anySmall||small;const has=valid>0;return `<tr><td>${escapeHtml(d.label)}</td><td class="num">${has?fmt(cases):'—'}</td><td class="num">${has?fmt(valid):'—'}</td><td class="num">${has?fmt(100*cases/valid,1)+' %':'Sin registro'}</td></tr>`;});
-  return `${anySmall?'<div class="sample-warning">⚠ Muestra reducida en uno o más indicadores; interpreta los porcentajes con cautela.</div>':''}<table class="metric-table"><thead><tr><th>Indicador</th><th>Casos</th><th>Válidos</th><th>%</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+  return `${anySmall?'<div class="sample-warning">⚠ Muestra reducida: uno o más indicadores tienen menos de 30 evaluados válidos; interpreta el porcentaje con cautela.</div>':''}<table class="metric-table"><thead><tr><th>Indicador</th><th>Casos</th><th>Válidos</th><th>%</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
 }
 function preventiveOverview(cct,cycle,turn){
   const rr=rowsForCct(cct,cycle,turn); if(!rr.length)return '<p class="no-record">Sin registro para este ciclo y turno.</p>';
@@ -260,7 +313,13 @@ function comboForDetail(cct,cycle,turn){
 function currentMetricLabel(){ return activeCombo?`Combinación: ${activeCombo}`:(METRICS[q('filtroIndicador').value]?.label||'Indicador'); }
 function updateLegend(){
   q('legendTitle').textContent=currentMetricLabel();
-  q('legendBody').innerHTML=RANGE_DEFS.map(x=>`<div class="legend-row"><span class="legend-swatch" style="background:${x.color}"></span><span>${escapeHtml(x.label)}</span></div>`).join('')+`<div class="legend-note"><strong>Lectura:</strong> verde = menor presencia del problema; amarillo/naranja = intermedia; rojo = mayor presencia. Gris = sin registro válido. En clusters, el color usa casos/evaluados agregados.</div>`;
+  const t=getClusterTerciles();
+  const clusterLegend=(t.q1!=null&&t.q2!=null)?`<div class="legend-subtitle">Clusters · terciles CDMX</div>
+    <div class="legend-row"><span class="legend-swatch" style="background:${CLUSTER_TERCILE_COLORS.t1}"></span><span>Bajo ≤ ${fmt(t.q1,1)} %</span></div>
+    <div class="legend-row"><span class="legend-swatch" style="background:${CLUSTER_TERCILE_COLORS.t2}"></span><span>Medio &gt; ${fmt(t.q1,1)}–${fmt(t.q2,1)} %</span></div>
+    <div class="legend-row"><span class="legend-swatch" style="background:${CLUSTER_TERCILE_COLORS.t3}"></span><span>Alto &gt; ${fmt(t.q2,1)} %</span></div>`:'';
+  q('legendBody').innerHTML=`<div class="legend-subtitle">Planteles · rangos fijos</div>`+RANGE_DEFS.map(x=>`<div class="legend-row"><span class="legend-swatch" style="background:${x.color}"></span><span>${escapeHtml(x.label)}</span></div>`).join('')+clusterLegend+`<div class="legend-note"><strong>Lectura:</strong> en los clusters, verde = tercil de menor prevalencia, amarillo = intermedio y rojo = mayor prevalencia. Los cortes se calculan para toda la CDMX por ciclo e indicador y no cambian con los filtros.</div>`;
+  updateClusterTercileInfo();
 }
 function updateSummary(){
   const cycle=q('filtroCiclo').value,turn=q('filtroTurno').value; let evaluatedCcts=0,cases=0,valid=0;
@@ -279,8 +338,8 @@ function bindUI(){
   q('rangeFilters')?.addEventListener('change',()=>applyFilters(false));
   q('filtroCombinacion').addEventListener('change',()=>{if(!q('filtroCombinacion').value && activeCombo){activeCombo='';applyFilters(false);}});
   q('btnVisualizarCombo').addEventListener('click',()=>{activeCombo=q('filtroCombinacion').value||'';if(activeCombo)applyFilters(false);});
-  q('filtroIndicador').addEventListener('change',()=>{activeCombo='';q('filtroCombinacion').value='';});
-  q('toggleClusters').addEventListener('change',()=>drawMarkers());
+  q('filtroIndicador').addEventListener('change',()=>{activeCombo='';q('filtroCombinacion').value='';applyFilters(false);});
+  q('toggleClusters').addEventListener('change',()=>{drawMarkers();updateLegend();});
   q('btnLimpiar').addEventListener('click',()=>{q('filtroCiclo').value=meta.ciclo_predeterminado||q('filtroCiclo').options[0]?.value||'';q('filtroIndicador').value='caries';q('filtroAlcaldia').value='';q('filtroNivel').value='';q('filtroTurno').value='';q('buscarCCT').value='';q('buscarNombre').value='';q('ocultarPocos').checked=false;activeCombo='';q('filtroCombinacion').value='';buildRangeFilters();applyFilters(false);map.setView([19.35,-99.13],10)});
   q('toggleSidebar').addEventListener('click',()=>{q('showSidebar').classList.remove('hidden');q('layout').classList.add('sidebar-collapsed');setTimeout(()=>map.invalidateSize(),220)});
   q('showSidebar').addEventListener('click',()=>{q('showSidebar').classList.add('hidden');q('layout').classList.remove('sidebar-collapsed');setTimeout(()=>map.invalidateSize(),220)});

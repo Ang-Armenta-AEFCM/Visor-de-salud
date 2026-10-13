@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
-  <link rel="stylesheet" href="style.css?v=20261008-salud-2">
+  <link rel="stylesheet" href="style.css?v=20261013-salud-3">
 </head>
 <body>
 <header class="topbar"><div class="brand-block"><span class="eyebrow">Sistema de información geográfica</span><h1>Visor de Salud Escolar de la Ciudad de México</h1><p>Consulta territorial de caries, nutrición, valoración visual y concurrencia de condiciones por CCT, turno y ciclo escolar.</p></div><nav><a id="statsLink" href="estadisticas.html">Estadísticas generales</a></nav></header>
@@ -25,7 +25,7 @@
     <label for="filtroTurno">Turno</label><select id="filtroTurno"><option value="">Todos</option></select>
     <label for="buscarCCT">Buscar por CCT</label><input id="buscarCCT" list="listaCCT" type="search" placeholder="Escribe o selecciona un CCT"><datalist id="listaCCT"></datalist>
     <label for="buscarNombre">Buscar por nombre</label><input id="buscarNombre" list="listaNombres" type="search" placeholder="Nombre del plantel"><datalist id="listaNombres"></datalist>
-    <label class="inline-check"><input id="ocultarPocos" type="checkbox"><span>Ocultar registros con muestra reducida</span></label>
+    <label class="inline-check"><input id="ocultarPocos" type="checkbox"><span>Ocultar muestra reducida (&lt; 30 evaluados válidos)</span></label><p class="hint data-quality-note">Los indicadores usan solo registros válidos de la base de salud; los registros conflictivos identificados por la fuente se excluyen del cálculo.</p>
     <div class="buttons single-action"><button id="btnLimpiar" class="secondary" type="button">Limpiar todos los filtros</button></div>
   </section>
   <section class="panel collapsible-panel"><button id="toggleConcurrencia" class="collapse-title" type="button" aria-expanded="false"><span>Concurrencia de condiciones</span><span id="concurrenciaArrow">›</span></button><div id="concurrenciaBody" class="collapsible-body hidden">
@@ -33,11 +33,11 @@
     <label for="filtroCombinacion">Combinación</label><select id="filtroCombinacion"><option value="">Selecciona una combinación</option></select>
     <button id="btnVisualizarCombo" class="secondary combo-map-btn" type="button">Visualizar combinación en el mapa</button>
   </div></section>
-  <section class="panel"><h2>Clusters de salud</h2><div class="cluster-options"><label class="inline-check"><input id="toggleClusters" type="checkbox" checked><span>Agrupar planteles cercanos</span></label></div><p class="hint">El número indica ubicaciones agrupadas. El color resume la prevalencia del problema seleccionado: verde = menor, rojo = mayor.</p></section>
+  <section class="panel cluster-panel"><h2>Clusters de salud</h2><div class="cluster-options"><label class="inline-check"><input id="toggleClusters" type="checkbox" checked><span>Agrupar planteles cercanos</span></label></div><p class="hint">El número indica ubicaciones agrupadas. El color compara la prevalencia del cluster contra los terciles de toda la CDMX.</p><div id="clusterTercileInfo" class="tercile-box" aria-live="polite"></div></section>
   <section class="panel compact"><h2>Resumen visible</h2><div id="summaryText" class="health-summary-line">Cargando información…</div><div class="kpis dynamic-kpis"><div><strong id="kpi1">0</strong><span>CCT visibles</span></div><div><strong id="kpi2">0</strong><span>Inmuebles oficiales</span></div><div><strong id="kpi3">0</strong><span>CCT con evaluación</span></div><div><strong id="kpi4">0</strong><span>Casos del indicador</span></div></div></section>
 </aside>
 <button id="showSidebar" class="show-sidebar hidden" type="button">Menú</button>
 <section class="maparea" id="maparea"><div id="map"></div><div class="map-actions"><button id="toggleDark" type="button" title="Modo oscuro">◐</button><button id="toggleFullscreen" type="button" title="Pantalla completa">⛶</button></div><div id="mapStatus" class="map-status">Cargando información del visor…</div><div id="legend" class="legend"><div class="legend-head"><strong id="legendTitle">Indicador</strong><button id="toggleLegend" type="button">−</button></div><div id="legendBody"></div></div><aside id="detailPanel" class="detail-panel" aria-live="polite" aria-hidden="true"><button id="closeDetail" class="close" type="button">×</button><h2 id="detailTitle">Seleccione un plantel</h2><div id="detailContent" class="detail-content"><p>Haga clic en un punto del mapa para consultar la información.</p></div></aside></section>
 </main>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script><script src="script.js?v=20261008-salud-2"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script><script src="script.js?v=20261013-salud-3"></script>
 </body></html>
