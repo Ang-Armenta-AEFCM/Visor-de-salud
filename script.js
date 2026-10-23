@@ -30,6 +30,7 @@ const RANGE_DEFS = [
 // calculados para toda la CDMX por ciclo + indicador, de modo que sus colores
 // no cambian al aplicar filtros de alcaldía, nivel, turno o búsqueda.
 const CLUSTER_TERCILE_COLORS = {sin:'#94a3b8', zero:'#15803d', t1:'#2e7d32', t2:'#f59e0b', t3:'#c62828'};
+const COMBINED_CYCLE = '__AMBOS__';
 let tercileCache = new Map();
 
 const CANONICAL_ALCALDIAS = [
@@ -113,7 +114,8 @@ function buildSites(){
 }
 
 function buildFilters(){
-  q('filtroCiclo').innerHTML=(meta.ciclos||[]).map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join(''); q('filtroCiclo').value=meta.ciclo_predeterminado||'';
+  const cycleOptions=(meta.ciclos||[]).map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')+`<option value="${COMBINED_CYCLE}">Ambos ciclos</option>`;
+  q('filtroCiclo').innerHTML=cycleOptions; q('filtroCiclo').value=meta.ciclo_predeterminado||'';
   q('filtroIndicador').innerHTML=Object.entries(METRICS).map(([k,d])=>`<option value="${k}">${escapeHtml(d.label)}</option>`).join('');
   q('filtroAlcaldia').innerHTML='<option value="">Todas</option>'+CANONICAL_ALCALDIAS.map(x=>`<option>${x}</option>`).join('');
   const levels=[...new Set(Object.entries(base).filter(([c])=>!EXCLUDED_CCTS.has(c)).map(([,r])=>levelCanonical(r.nivel)).filter(x=>x && x!=='Otro Nivel Educativo'))].sort((a,b)=>a.localeCompare(b,'es'));
@@ -183,20 +185,42 @@ function clusterTercileText(){
 }
 function updateClusterTercileInfo(){const el=q('clusterTercileInfo');if(el)el.innerHTML=clusterTercileText();}
 
-function rowsForCct(cct,cycle,turn){ return (healthIndex.get(cct)||[]).filter(r=>r.ciclo===cycle && (!turn || turnCanonical(r.turno)===turn)); }
+function isCombinedCycle(cycle){ return cycle===COMBINED_CYCLE; }
+function cycleLabel(cycle){ return isCombinedCycle(cycle)?'Ambos ciclos':cycle; }
+function cycleRank(cycle){ const i=(meta.ciclos||[]).indexOf(cycle); return i<0?999:i; }
+function healthRowSignature(r){
+  const skip=new Set(['ciclo','id_escuela_turno_ciclo']);
+  return JSON.stringify(Object.keys(r).filter(k=>!skip.has(k)).sort().map(k=>[k,r[k]]));
+}
+function rowsForCct(cct,cycle,turn){
+  const all=(healthIndex.get(cct)||[]).filter(r=>(!turn || turnCanonical(r.turno)===turn));
+  if(!isCombinedCycle(cycle)) return all.filter(r=>r.ciclo===cycle);
+  // En la vista combinada se suman ambos ciclos. Si un registro agregado del mismo
+  // CCT+turno fuera exactamente igual en dos ciclos, se conserva solo el más reciente.
+  const seen=new Set(), out=[];
+  all.slice().sort((a,b)=>cycleRank(a.ciclo)-cycleRank(b.ciclo)).forEach(r=>{
+    const sig=`${turnCanonical(r.turno)}|${healthRowSignature(r)}`;
+    if(seen.has(sig)) return;
+    seen.add(sig); out.push(r);
+  });
+  return out;
+}
 function metricForCct(cct,cycle,turn){
   if(activeCombo) return comboMetricForCct(cct,cycle,turn,activeCombo);
   const d=METRICS[q('filtroIndicador').value]||METRICS.caries; const rows=rowsForCct(cct,cycle,turn);
   let valid=0,cases=0,small=false,hasAny=false;
   rows.forEach(r=>{ const v=Number(r[d.valid]); if(Number.isFinite(v)&&v>0){hasAny=true;valid+=v;cases+=Number(r[d.cases])||0;} if(Number(r[d.small])===1) small=true; });
+  if(isCombinedCycle(cycle) && hasAny) small=valid<Number(meta.minimo_bandera||30);
   return {hasRecord:hasAny,valid:hasAny?valid:0,cases:hasAny?cases:0,pct:hasAny&&valid?100*cases/valid:null,small,rows};
 }
 function comboMetricForCct(cct,cycle,turn,combo){
   const rows=rowsForCct(cct,cycle,turn); let valid=0,small=false;
   rows.forEach(r=>{ const v=Number(r.evaluacion_completa); if(Number.isFinite(v)&&v>0) valid+=v; if(Number(r.concurrencia_pocos_validos)===1)small=true; });
+  if(isCombinedCycle(cycle) && valid) small=valid<Number(meta.minimo_bandera||30);
   if(!valid) return {hasRecord:false,valid:0,cases:0,pct:null,small,rows};
   let cases=0; const turns=turn?[turn]:[...new Set(rows.map(r=>turnCanonical(r.turno)))];
-  turns.forEach(t=>{ const cr=comboIndex.get(`${cct}|${cycle}|${t}|${combo}`); if(cr) cases+=Number(cr.estudiantes)||0; });
+  const cycles=isCombinedCycle(cycle)?(meta.ciclos||[]):[cycle];
+  turns.forEach(t=>cycles.forEach(cy=>{ const cr=comboIndex.get(`${cct}|${cy}|${t}|${combo}`); if(cr) cases+=Number(cr.estudiantes)||0; }));
   return {hasRecord:true,valid,cases,pct:100*cases/valid,small,rows};
 }
 function aggregateMetrics(ccts,cycle,turn){
@@ -288,25 +312,32 @@ function renderDetail(){
   const healthTurns=[...new Set(rowsForCct(cct,cycle,'').map(x=>turnCanonical(x.turno)))]; const turns=[...new Set([...recordTurns(r),...healthTurns])];
   if(!currentDetail.turn) currentDetail.turn=healthTurns[0]||turns[0]||'';
   const selectedTurn=currentDetail.turn; const overview=healthOverview(cct,cycle,selectedTurn); const combinations=comboForDetail(cct,cycle,selectedTurn);
-  q('detailContent').innerHTML=`<div class="detail-tabs"><button class="tab-btn active" data-tab="general">General y salud</button><button class="tab-btn" data-tab="combos">Combinaciones</button></div><div class="tab-pane active" data-pane="general"><dl><dt>CCT</dt><dd>${escapeHtml(cct)}</dd><dt>Nivel</dt><dd>${escapeHtml(levelCanonical(r.nivel))}</dd><dt>Alcaldía</dt><dd>${escapeHtml(r.alcaldia||'Sin registro')}</dd><dt>Sostenimiento</dt><dd>${escapeHtml(r.sostenimiento||'Sin registro')}</dd><dt>Domicilio</dt><dd>${escapeHtml(r.domicilio||'Sin registro')}</dd><dt>Ciclo</dt><dd>${escapeHtml(cycle)}</dd></dl>${turns.length?`<label for="detailTurn">Turno</label><select id="detailTurn">${turns.map(t=>`<option ${t===selectedTurn?'selected':''}>${escapeHtml(t)}</option>`).join('')}</select>`:''}<div class="info-card"><h3>Indicadores de salud</h3>${overview}</div><div class="info-card"><h3>Atención y prevención</h3>${preventiveOverview(cct,cycle,selectedTurn)}</div></div><div class="tab-pane" data-pane="combos"><h3>Concurrencia de condiciones</h3>${combinations}</div>`;
+  q('detailContent').innerHTML=`<div class="detail-tabs"><button class="tab-btn active" data-tab="general">General y salud</button><button class="tab-btn" data-tab="combos">Combinaciones</button></div><div class="tab-pane active" data-pane="general"><dl><dt>CCT</dt><dd>${escapeHtml(cct)}</dd><dt>Nivel</dt><dd>${escapeHtml(levelCanonical(r.nivel))}</dd><dt>Alcaldía</dt><dd>${escapeHtml(r.alcaldia||'Sin registro')}</dd><dt>Sostenimiento</dt><dd>${escapeHtml(r.sostenimiento||'Sin registro')}</dd><dt>Domicilio</dt><dd>${escapeHtml(r.domicilio||'Sin registro')}</dd><dt>Ciclo</dt><dd>${escapeHtml(cycleLabel(cycle))}</dd></dl>${turns.length?`<label for="detailTurn">Turno</label><select id="detailTurn">${turns.map(t=>`<option ${t===selectedTurn?'selected':''}>${escapeHtml(t)}</option>`).join('')}</select>`:''}<div class="info-card"><h3>Indicadores de salud</h3>${overview}</div><div class="info-card"><h3>Atención y prevención</h3>${preventiveOverview(cct,cycle,selectedTurn)}</div></div><div class="tab-pane" data-pane="combos"><h3>Concurrencia de condiciones</h3>${combinations}</div>`;
   q('detailContent').querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{q('detailContent').querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===btn));q('detailContent').querySelectorAll('[data-pane]').forEach(x=>x.classList.toggle('active',x.dataset.pane===btn.dataset.tab));}));
   const sel=q('detailTurn'); if(sel) sel.addEventListener('change',()=>{currentDetail.turn=sel.value;renderDetail();});
 }
 function healthOverview(cct,cycle,turn){
   const keys=['caries','bajo_peso','sobrepeso','obesidad','alteracion_nutricional','visual','concurrencia'];
   const rr=rowsForCct(cct,cycle,turn); let anySmall=false;
-  const rows=keys.map(k=>{const d=METRICS[k];let valid=0,cases=0,small=false;rr.forEach(r=>{const v=Number(r[d.valid]);if(v>0){valid+=v;cases+=Number(r[d.cases])||0;}if(Number(r[d.small])===1)small=true;});anySmall=anySmall||small;const has=valid>0;return `<tr><td>${escapeHtml(d.label)}</td><td class="num">${has?fmt(cases):'—'}</td><td class="num">${has?fmt(valid):'—'}</td><td class="num">${has?fmt(100*cases/valid,1)+' %':'Sin registro'}</td></tr>`;});
+  const rows=keys.map(k=>{const d=METRICS[k];let valid=0,cases=0,small=false;rr.forEach(r=>{const v=Number(r[d.valid]);if(v>0){valid+=v;cases+=Number(r[d.cases])||0;}if(Number(r[d.small])===1)small=true;});if(isCombinedCycle(cycle)&&valid>0)small=valid<Number(meta.minimo_bandera||30);anySmall=anySmall||small;const has=valid>0;return `<tr><td>${escapeHtml(d.label)}</td><td class="num">${has?fmt(cases):'—'}</td><td class="num">${has?fmt(valid):'—'}</td><td class="num">${has?fmt(100*cases/valid,1)+' %':'Sin registro'}</td></tr>`;});
   return `${anySmall?'<div class="sample-warning">⚠ Muestra reducida: uno o más indicadores tienen menos de 30 evaluados válidos; interpreta el porcentaje con cautela.</div>':''}<table class="metric-table"><thead><tr><th>Indicador</th><th>Casos</th><th>Válidos</th><th>%</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
 }
 function preventiveOverview(cct,cycle,turn){
   const rr=rowsForCct(cct,cycle,turn); if(!rr.length)return '<p class="no-record">Sin registro para este ciclo y turno.</p>';
   const weighted=(field,validField='atencion_validos')=>{let num=0,den=0;rr.forEach(r=>{const v=Number(r[validField]),p=Number(r[field]);if(v>0&&Number.isFinite(p)){den+=v;num+=v*p;}});return den?num/den:null};
   const vals=[['Promoción de salud',weighted('promocion_salud_si_pct')],['Técnica de cepillado',weighted('cepillado_si_pct')],['Aplicación de flúor',weighted('fluor_si_pct')],['Puntuación de atención',weighted('atencion_puntuacion')]];
-  return `<p class="mini-method">Porcentajes calculados entre estudiantes con registro válido de atención/previsión en este CCT, turno y ciclo.</p><table class="metric-table"><tbody>${vals.map(([l,v])=>`<tr><td>${l}</td><td class="num">${v==null?'Sin registro':fmt(v,1)+(l.includes('Puntuación')?'':' %')}</td></tr>`).join('')}</tbody></table>`;
+  return `<p class="mini-method">Porcentajes calculados entre estudiantes con registro válido de atención/previsión en este CCT, turno y periodo seleccionado.</p><table class="metric-table"><tbody>${vals.map(([l,v])=>`<tr><td>${l}</td><td class="num">${v==null?'Sin registro':fmt(v,1)+(l.includes('Puntuación')?'':' %')}</td></tr>`).join('')}</tbody></table>`;
 }
 function comboForDetail(cct,cycle,turn){
-  const list=combos.filter(r=>r.cct===cct&&r.ciclo===cycle&&(!turn||turnCanonical(r.turno)===turn)).sort((a,b)=>(b.estudiantes||0)-(a.estudiantes||0));
-  if(!list.length)return '<p class="no-record">Sin combinaciones registradas para este ciclo y turno.</p>';
+  const cycles=isCombinedCycle(cycle)?(meta.ciclos||[]):[cycle];
+  const source=combos.filter(r=>r.cct===cct&&cycles.includes(r.ciclo)&&(!turn||turnCanonical(r.turno)===turn));
+  if(!source.length)return '<p class="no-record">Sin combinaciones registradas para el periodo y turno seleccionados.</p>';
+  const grouped=new Map();
+  source.forEach(r=>{
+    const k=r.combinacion, g=grouped.get(k)||{combinacion:k,estudiantes:0,evaluacion_completa:0};
+    g.estudiantes+=Number(r.estudiantes)||0; g.evaluacion_completa+=Number(r.evaluacion_completa)||0; grouped.set(k,g);
+  });
+  const list=[...grouped.values()].map(x=>({...x,porcentaje:x.evaluacion_completa?100*x.estudiantes/x.evaluacion_completa:0})).sort((a,b)=>b.estudiantes-a.estudiantes);
   return `<div class="combo-list">${list.slice(0,20).map(x=>`<div class="combo-item"><strong>${escapeHtml(x.combinacion)}</strong><span>${fmt(x.estudiantes)} estudiantes · ${fmt(x.porcentaje,1)} % de evaluaciones completas</span></div>`).join('')}</div>`;
 }
 
@@ -326,7 +357,7 @@ function updateSummary(){
   currentVisibleCcts.forEach(c=>{const m=metricForCct(c,cycle,turn);if(m.hasRecord){evaluatedCcts++;cases+=m.cases;valid+=m.valid;}});
   const officialVisible=new Set(currentVisibleSites.filter(s=>s.official).map(s=>s.id)).size;
   q('kpi1').textContent=fmt(currentVisibleCcts.size); q('kpi2').textContent=fmt(officialVisible); q('kpi3').textContent=fmt(evaluatedCcts); q('kpi4').textContent=fmt(cases);
-  q('summaryText').innerHTML=`<strong>${escapeHtml(currentMetricLabel())}</strong> · ${escapeHtml(cycle)}<br>${valid?`${fmt(cases)} casos entre ${fmt(valid)} evaluados (${fmt(100*cases/valid,1)} %).`:'No hay evaluaciones válidas visibles para el indicador seleccionado.'}`;
+  q('summaryText').innerHTML=`<strong>${escapeHtml(currentMetricLabel())}</strong> · ${escapeHtml(cycleLabel(cycle))}<br>${valid?`${fmt(cases)} casos entre ${fmt(valid)} evaluados (${fmt(100*cases/valid,1)} %).`:'No hay evaluaciones válidas visibles para el indicador seleccionado.'}`;
 }
 
 function drawAlcaldias(geo){ if(alcaldiaLayer)map.removeLayer(alcaldiaLayer); alcaldiaLayer=L.geoJSON(geo,{interactive:false,style:{color:'#315d7b',weight:1.1,opacity:.75,fillOpacity:0}}).addTo(map); alcaldiaLayer.bringToBack(); }

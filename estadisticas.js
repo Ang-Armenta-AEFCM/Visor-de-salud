@@ -14,18 +14,27 @@
   const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
   const fmt=(n,d=0)=>Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d});
   function level(v){const x=norm(v);if(x.includes('EDUCACION INICIAL'))return'Educación Inicial';if(x.startsWith('PREESCOLAR'))return'Preescolar';if(x.startsWith('PRIMARIA'))return'Primaria';if(x.startsWith('SECUNDARIA'))return'Secundaria';if(x.includes('ESPECIAL'))return'Especial - CAM';if(x.includes('ADULTOS')&&x.includes('PRIMARIA'))return'Adultos - Primaria';if(x.includes('ADULTOS')&&x.includes('SECUNDARIA'))return'Adultos - Secundaria';return String(v||'');}
+  const COMBINED='__AMBOS__';
   const cycles=[...new Set(rows.map(r=>r.ciclo))].sort().reverse();
-  q('statsCiclo').innerHTML=cycles.map(c=>`<option value="${c}">${c}</option>`).join('');q('statsCiclo').value=meta.ciclo_predeterminado||cycles[0]||'';
+  q('statsCiclo').innerHTML=cycles.map(c=>`<option value="${c}">${c}</option>`).join('')+`<option value="${COMBINED}">Ambos ciclos</option>`;q('statsCiclo').value=meta.ciclo_predeterminado||cycles[0]||'';
   const alcaldias=[...new Set(Object.entries(base).filter(([c])=>!EXCLUDED.has(c)).map(([,r])=>r.alcaldia).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
   q('statsAlcaldia').innerHTML='<option value="">Todas</option>'+alcaldias.map(a=>`<option>${a}</option>`).join('');
   const niveles=[...new Set(Object.entries(base).filter(([c])=>!EXCLUDED.has(c)).map(([,r])=>level(r.nivel)).filter(x=>x&&x!=='Otro Nivel Educativo'))].sort((a,b)=>a.localeCompare(b,'es'));
   q('statsNivel').innerHTML='<option value="">Todos</option>'+niveles.map(a=>`<option>${a}</option>`).join('');
 
-  function filtered(){const c=q('statsCiclo').value,a=q('statsAlcaldia').value,n=q('statsNivel').value;return rows.filter(r=>{if(r.ciclo!==c||EXCLUDED.has(r.cct))return false;const br=base[r.cct];if(!br)return false;if(a&&br.alcaldia!==a)return false;if(n&&level(br.nivel)!==n)return false;return true;});}
+  function rowSig(r){const skip=new Set(['ciclo','id_escuela_turno_ciclo']);return JSON.stringify(Object.keys(r).filter(k=>!skip.has(k)).sort().map(k=>[k,r[k]]));}
+  function selectedRows(c){
+    const src=c===COMBINED?rows:rows.filter(r=>r.ciclo===c);
+    if(c!==COMBINED)return src;
+    const rank=x=>{const i=cycles.indexOf(x);return i<0?999:i},seen=new Set(),out=[];
+    src.slice().sort((a,b)=>rank(a.ciclo)-rank(b.ciclo)).forEach(r=>{const sig=`${r.cct}|${norm(r.turno)}|${rowSig(r)}`;if(seen.has(sig))return;seen.add(sig);out.push(r);});
+    return out;
+  }
+  function filtered(){const c=q('statsCiclo').value,a=q('statsAlcaldia').value,n=q('statsNivel').value;return selectedRows(c).filter(r=>{if(EXCLUDED.has(r.cct))return false;const br=base[r.cct];if(!br)return false;if(a&&br.alcaldia!==a)return false;if(n&&level(br.nivel)!==n)return false;return true;});}
   function agg(rr,valid,cases){let v=0,k=0;rr.forEach(r=>{const x=Number(r[valid]);if(x>0){v+=x;k+=Number(r[cases])||0;}});return {valid:v,cases:k,pct:v?100*k/v:null};}
   function render(){
     const rr=filtered(), ccts=new Set(rr.map(r=>r.cct)), students=rr.reduce((a,r)=>a+(Number(r.estudiantes)||0),0), cycle=q('statsCiclo').value;
-    q('statsContext').textContent=`${cycle} · ${q('statsAlcaldia').value||'Todas las alcaldías'} · ${q('statsNivel').value||'Todos los niveles'}`;
+    q('statsContext').textContent=`${cycle===COMBINED?'Ambos ciclos':cycle} · ${q('statsAlcaldia').value||'Todas las alcaldías'} · ${q('statsNivel').value||'Todos los niveles'}`;
     q('statsContent').innerHTML=[['CCT con registro',ccts.size],['Registros CCT-turno',rr.length],['Estudiantes registrados',students],['Universo del visor',meta.universo_cct]].map(([l,v])=>`<div class="card"><span>${l}</span><strong>${fmt(v)}</strong></div>`).join('');
     q('healthStats').innerHTML=Object.values(METRICS).map(([label,vf,cf])=>{const a=agg(rr,vf,cf);return `<div class="health-stat-card"><span>${label}</span><strong>${a.pct==null?'—':fmt(a.pct,1)+' %'}</strong><small>${a.valid?`${fmt(a.cases)} casos / ${fmt(a.valid)} válidos`:'Sin evaluaciones válidas'}</small></div>`}).join('');
     renderAlcaldias(rr);renderCycles();
