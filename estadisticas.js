@@ -25,10 +25,7 @@
   function rowSig(r){const skip=new Set(['ciclo','id_escuela_turno_ciclo']);return JSON.stringify(Object.keys(r).filter(k=>!skip.has(k)).sort().map(k=>[k,r[k]]));}
   function selectedRows(c){
     const src=c===COMBINED?rows:rows.filter(r=>r.ciclo===c);
-    if(c!==COMBINED)return src;
-    const rank=x=>{const i=cycles.indexOf(x);return i<0?999:i},seen=new Set(),out=[];
-    src.slice().sort((a,b)=>rank(a.ciclo)-rank(b.ciclo)).forEach(r=>{const sig=`${r.cct}|${norm(r.turno)}|${rowSig(r)}`;if(seen.has(sig))return;seen.add(sig);out.push(r);});
-    return out;
+    return src;
   }
   function filtered(){const c=q('statsCiclo').value,a=q('statsAlcaldia').value,n=q('statsNivel').value;return selectedRows(c).filter(r=>{if(EXCLUDED.has(r.cct))return false;const br=base[r.cct];if(!br)return false;if(a&&br.alcaldia!==a)return false;if(n&&level(br.nivel)!==n)return false;return true;});}
   function agg(rr,valid,cases){let v=0,k=0;rr.forEach(r=>{const x=Number(r[valid]);if(x>0){v+=x;k+=Number(r[cases])||0;}});return {valid:v,cases:k,pct:v?100*k/v:null};}

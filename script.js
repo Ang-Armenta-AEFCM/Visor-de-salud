@@ -195,15 +195,7 @@ function healthRowSignature(r){
 function rowsForCct(cct,cycle,turn){
   const all=(healthIndex.get(cct)||[]).filter(r=>(!turn || turnCanonical(r.turno)===turn));
   if(!isCombinedCycle(cycle)) return all.filter(r=>r.ciclo===cycle);
-  // En la vista combinada se suman ambos ciclos. Si un registro agregado del mismo
-  // CCT+turno fuera exactamente igual en dos ciclos, se conserva solo el más reciente.
-  const seen=new Set(), out=[];
-  all.slice().sort((a,b)=>cycleRank(a.ciclo)-cycleRank(b.ciclo)).forEach(r=>{
-    const sig=`${turnCanonical(r.turno)}|${healthRowSignature(r)}`;
-    if(seen.has(sig)) return;
-    seen.add(sig); out.push(r);
-  });
-  return out;
+  return all;
 }
 function metricForCct(cct,cycle,turn){
   if(activeCombo) return comboMetricForCct(cct,cycle,turn,activeCombo);
@@ -353,10 +345,13 @@ function updateLegend(){
   updateClusterTercileInfo();
 }
 function updateSummary(){
-  const cycle=q('filtroCiclo').value,turn=q('filtroTurno').value; let evaluatedCcts=0,cases=0,valid=0;
-  currentVisibleCcts.forEach(c=>{const m=metricForCct(c,cycle,turn);if(m.hasRecord){evaluatedCcts++;cases+=m.cases;valid+=m.valid;}});
+  const cycle=q('filtroCiclo').value,turn=q('filtroTurno').value; let registeredCases=0,cases=0,valid=0;
+  currentVisibleCcts.forEach(c=>{
+    rowsForCct(c,cycle,turn).forEach(r=>{registeredCases+=Number(r.estudiantes)||0;});
+    const m=metricForCct(c,cycle,turn);if(m.hasRecord){cases+=m.cases;valid+=m.valid;}
+  });
   const officialVisible=new Set(currentVisibleSites.filter(s=>s.official).map(s=>s.id)).size;
-  q('kpi1').textContent=fmt(currentVisibleCcts.size); q('kpi2').textContent=fmt(officialVisible); q('kpi3').textContent=fmt(evaluatedCcts); q('kpi4').textContent=fmt(cases);
+  q('kpi1').textContent=fmt(currentVisibleCcts.size); q('kpi2').textContent=fmt(officialVisible); q('kpi3').textContent=fmt(registeredCases); q('kpi4').textContent=fmt(cases);
   q('summaryText').innerHTML=`<strong>${escapeHtml(currentMetricLabel())}</strong> · ${escapeHtml(cycleLabel(cycle))}<br>${valid?`${fmt(cases)} casos entre ${fmt(valid)} evaluados (${fmt(100*cases/valid,1)} %).`:'No hay evaluaciones válidas visibles para el indicador seleccionado.'}`;
 }
 
