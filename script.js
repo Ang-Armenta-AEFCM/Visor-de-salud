@@ -17,7 +17,6 @@ const METRICS = {
 };
 
 const RANGE_DEFS = [
-  {key:'sin', label:'Sin registro válido', color:'#94a3b8'},
   {key:'zero', label:'0 %', color:'#2e7d32'},
   {key:'r1', label:'> 0 a 5 %', color:'#7cb342'},
   {key:'r2', label:'> 5 a 10 %', color:'#fbc02d'},
@@ -172,7 +171,7 @@ function clusterTercileClass(m){
   if(m.pct<=t.q2) return 't2';
   return 't3';
 }
-function clusterTercileLabel(k){return k==='sin'?'Sin registro válido':k==='zero'?'Evaluado, 0 casos':k==='t1'?'Tercil bajo':k==='t2'?'Tercil medio':'Tercil alto'}
+function clusterTercileLabel(k){return k==='zero'?'Evaluado, 0 casos':k==='t1'?'Tercil bajo':k==='t2'?'Tercil medio':'Tercil alto'}
 function clusterTercileColor(k){return CLUSTER_TERCILE_COLORS[k]||'#64748b'}
 function clusterTercileText(){
   const t=getClusterTerciles();
@@ -181,7 +180,7 @@ function clusterTercileText(){
     <div class="tercile-row"><span style="background:${CLUSTER_TERCILE_COLORS.t1}"></span><b>Bajo</b><small>≤ ${fmt(t.q1,1)} %</small></div>
     <div class="tercile-row"><span style="background:${CLUSTER_TERCILE_COLORS.t2}"></span><b>Medio</b><small>&gt; ${fmt(t.q1,1)} a ${fmt(t.q2,1)} %</small></div>
     <div class="tercile-row"><span style="background:${CLUSTER_TERCILE_COLORS.t3}"></span><b>Alto</b><small>&gt; ${fmt(t.q2,1)} %</small></div>
-    <p class="tercile-note">Los cortes se calculan con planteles que sí tienen información válida del indicador en toda la CDMX. Los planteles sin registro siguen apareciendo y se agrupan, pero no influyen en el porcentaje ni en el tercil del cluster. Los filtros no cambian los cortes. 0 % se identifica aparte.</p>`;
+    <p class="tercile-note">Los cortes se calculan con planteles que tienen información válida del indicador en toda la CDMX. Los filtros no cambian los cortes. 0 % se identifica aparte.</p>`;
 }
 function updateClusterTercileInfo(){const el=q('clusterTercileInfo');if(el)el.innerHTML=clusterTercileText();}
 
@@ -232,6 +231,7 @@ function generalCctMatches(cct){
   if(nameSearch && !norm(r.nombre).includes(nameSearch)) return false; return true;
 }
 function metricMatches(m){
+  if(!m.hasRecord) return false;
   const ranges=selectedRanges();
   if(q('ocultarPocos').checked && m.small) return false;
   return ranges.has(rangeKey(m));
@@ -274,7 +274,7 @@ function clusterAggregate(cluster){
   markers.forEach(m=>{const s=m._healthSite;if(!s)return;ccts+=s.visibleCcts.length;if(s.official)official++;if(s.agg.hasRecord){recordSites++;valid+=s.agg.valid;cases+=s.agg.cases;}});
   return {hasRecord:valid>0,valid,cases,pct:valid?100*cases/valid:null,recordSites,sites:markers.length,official,ccts};
 }
-function clusterTooltip(a){ const tier=clusterTercileClass(a); const status=!a.hasRecord?'Sin información válida para colorear':a.cases===0?'0 % · evaluado sin casos':`${fmt(a.pct,1)} % · ${clusterTercileLabel(tier)}`; const noRecord=Math.max(0,a.sites-a.recordSites); return `<div class="cluster-tip"><strong>Resumen del cluster</strong><p>El cluster agrupa todos los planteles visibles. Para calcular su porcentaje y asignar el color solo se usan los que sí tienen información válida del indicador.</p><dl><dt>Ubicaciones agrupadas</dt><dd>${fmt(a.sites)}</dd><dt>CCT</dt><dd>${fmt(a.ccts)}</dd><dt>Con información válida</dt><dd>${fmt(a.recordSites)}</dd><dt>Sin información válida</dt><dd>${fmt(noRecord)}</dd><dt>Evaluados válidos</dt><dd>${fmt(a.valid)}</dd><dt>Casos</dt><dd>${fmt(a.cases)}</dd><dt>Resultado</dt><dd>${status}</dd></dl></div>`; }
+function clusterTooltip(a){ const tier=clusterTercileClass(a); const status=a.cases===0?'0 % · evaluado sin casos':`${fmt(a.pct,1)} % · ${clusterTercileLabel(tier)}`; return `<div class="cluster-tip"><strong>Resumen del cluster</strong><p>El cluster agrupa los planteles visibles con información válida del indicador.</p><dl><dt>Ubicaciones agrupadas</dt><dd>${fmt(a.sites)}</dd><dt>CCT</dt><dd>${fmt(a.ccts)}</dd><dt>Evaluados válidos</dt><dd>${fmt(a.valid)}</dd><dt>Casos</dt><dd>${fmt(a.cases)}</dd><dt>Resultado</dt><dd>${status}</dd></dl></div>`; }
 
 function popupMetricHtml(cct){
   const m=metricForCct(cct,q('filtroCiclo').value,q('filtroTurno').value);
@@ -341,7 +341,7 @@ function updateLegend(){
     <div class="legend-row"><span class="legend-swatch" style="background:${CLUSTER_TERCILE_COLORS.t1}"></span><span>Bajo ≤ ${fmt(t.q1,1)} %</span></div>
     <div class="legend-row"><span class="legend-swatch" style="background:${CLUSTER_TERCILE_COLORS.t2}"></span><span>Medio &gt; ${fmt(t.q1,1)}–${fmt(t.q2,1)} %</span></div>
     <div class="legend-row"><span class="legend-swatch" style="background:${CLUSTER_TERCILE_COLORS.t3}"></span><span>Alto &gt; ${fmt(t.q2,1)} %</span></div>`:'';
-  q('legendBody').innerHTML=`<div class="legend-subtitle">Planteles · rangos fijos</div>`+RANGE_DEFS.map(x=>`<div class="legend-row"><span class="legend-swatch" style="background:${x.color}"></span><span>${escapeHtml(x.label)}</span></div>`).join('')+clusterLegend+`<div class="legend-note"><strong>Lectura:</strong> todos los planteles visibles pueden formar parte del cluster. El color se calcula solo con los que tienen información válida: verde = tercil de menor prevalencia, amarillo = intermedio y rojo = mayor prevalencia. Los planteles sin registro no afectan el color.</div>`;
+  q('legendBody').innerHTML=`<div class="legend-subtitle">Planteles · rangos fijos</div>`+RANGE_DEFS.map(x=>`<div class="legend-row"><span class="legend-swatch" style="background:${x.color}"></span><span>${escapeHtml(x.label)}</span></div>`).join('')+clusterLegend+`<div class="legend-note"><strong>Lectura:</strong> todos los planteles visibles tienen información válida y pueden formar parte del cluster. Verde = tercil de menor prevalencia, amarillo = intermedio y rojo = mayor prevalencia.</div>`;
   updateClusterTercileInfo();
 }
 function updateSummary(){
